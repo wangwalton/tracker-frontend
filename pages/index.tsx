@@ -42,6 +42,18 @@ const Home: NextPage = () => {
     }
   );
 
+  const activityCreate = useMutation(
+    (data) => {
+      return axios.post(trackerURL("/activity/create"), data);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("me");
+      },
+    }
+  );
+  const [newActName, setNewActName] = useState("");
+
   const [counter, setCounter] = useState(0);
 
   useInterval(() => {
@@ -67,7 +79,7 @@ const Home: NextPage = () => {
           <p>
             Current Activity:{" "}
             {data.currentEvent
-              ? getActivityName(data, data.currentEvent.id)
+              ? getActivityName(data, data.currentEvent.activityId)
               : "Not Started"}{" "}
             {data.currentEvent
               ? dateToDuration(data.currentEvent.startTime)
@@ -81,36 +93,25 @@ const Home: NextPage = () => {
             End Session
           </button>
         </div>
-        <p className={styles.description}></p>
-
         <div className={styles.grid}>
-          <a href="https://nextjs.org/docs" className={styles.card}>
-            <h2>Documentation &rarr;</h2>
-            <p>Find in-depth information about Next.js features and API.</p>
-          </a>
-
-          <a href="https://nextjs.org/learn" className={styles.card}>
-            <h2>Learn &rarr;</h2>
-            <p>Learn about Next.js in an interactive course with quizzes!</p>
-          </a>
-
-          <a
-            href="https://github.com/vercel/next.js/tree/canary/examples"
-            className={styles.card}
-          >
-            <h2>Examples &rarr;</h2>
-            <p>Discover and deploy boilerplate example Next.js projects.</p>
-          </a>
-
-          <a
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=default-template&utm_campaign=create-next-app"
-            className={styles.card}
-          >
-            <h2>Deploy &rarr;</h2>
-            <p>
-              Instantly deploy your Next.js site to a public URL with Vercel.
-            </p>
-          </a>
+          {data.activities.map((act) => (
+            <Activity key={act.id} act={act} />
+          ))}
+          <div className={styles.card}>
+            <h2>Create New Activity</h2>
+            <label>Name: </label>
+            <input
+              value={newActName}
+              onChange={(event) => setNewActName(event.target.value)}
+            ></input>
+            <button
+              onClick={() => {
+                activityCreate.mutate({ input: { name: newActName } });
+              }}
+            >
+              Submit
+            </button>
+          </div>
         </div>
       </main>
 
@@ -126,6 +127,51 @@ const Home: NextPage = () => {
           </span>
         </a>
       </footer>
+    </div>
+  );
+};
+
+const Activity = ({ act }) => {
+  const queryClient = useQueryClient();
+
+  const startEvent = useMutation(
+    (data) => {
+      return axios.post(trackerURL("/event/start"), data);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("me");
+      },
+    }
+  );
+
+  const actDelete = useMutation(
+    (data) => {
+      return axios.post(trackerURL("/activity/delete"), data);
+    },
+    {
+      onSuccess: () => {
+        queryClient.invalidateQueries("me");
+      },
+    }
+  );
+
+  return (
+    <div
+      className={styles.card}
+      onClick={() => {
+        startEvent.mutate({ activityId: act.id });
+      }}
+    >
+      <h2>{act.name}</h2>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          actDelete.mutate({ input: { id: act.id } });
+        }}
+      >
+        Delete
+      </button>
     </div>
   );
 };
